@@ -132,19 +132,6 @@ function onScanSuccess(text) {
     .then(data => handleResult(data));
 }
 
-    // 🔥 成功才写入 Log
-    if (data.status === "SUCCESS") {
-
-      fetch(
-        API_URL +
-        "?action=log" +
-        "&name=" + encodeURIComponent(data.name) +
-        "&id=" + encodeURIComponent(data.id)
-      );
-
-    }
-  });
-
 // ⌨️ Manual
 function openManual() {
   currentMode = "manual";
@@ -164,19 +151,6 @@ function manualCheck() {
     .then(r => r.json())
     .then(data => handleResult(data));
 }
-
-    // 🔥 成功才写入 Log
-    if (data.status === "SUCCESS") {
-
-      fetch(
-        API_URL +
-        "?action=log" +
-        "&name=" + encodeURIComponent(data.name) +
-        "&id=" + encodeURIComponent(data.id)
-      );
-
-    }
-  });
 
 // 🎯 result handler
 function handleResult(data) {
