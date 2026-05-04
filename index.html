@@ -85,7 +85,7 @@ db.ref("count").on("value", snap => {
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGlB4nwyn2sN0aGhswul1c_Z3sWsbigBFgweNo3GnWns-8p/exec";
 
-let scanner;
+let scanner = null;
 let scanning = false;
 let currentMode = "";
 
@@ -96,22 +96,29 @@ function openScan() {
   hideAll();
   document.getElementById("scanPage").style.display = "block";
 
-  // 🔥 防止重复 scanner
-  if (scanner) {
-    scanner.clear().catch(()=>{});
-    scanner = null;
+  const scannerElement = document.getElementById("scanner");
+
+  // 🔥 清空 DOM（非常重要）
+  scannerElement.innerHTML = "";
+
+  if (!scanner) {
+    scanner = new Html5Qrcode("scanner");
   }
 
-  scanner = new Html5Qrcode("scanner");
   scanning = true;
 
   scanner.start(
     { facingMode: "environment" },
-    { fps: 15, qrbox: 250 },
+    {
+      fps: 15,
+      qrbox: 250,
+      aspectRatio: 1.0
+    },
     onScanSuccess
-  );
+  ).catch(err => {
+    console.log("Camera start failed:", err);
+  });
 }
-
 function onScanSuccess(text) {
   if (!scanning) return;
 
@@ -210,8 +217,15 @@ function handleResult(data) {
 
 // 🔁 Submit Another
 function nextAction() {
-  if (currentMode === "scan") openScan();
-  else openManual();
+  if (currentMode === "scan") {
+
+    // 🔥 重新初始化 DOM + restart camera
+    document.getElementById("scanner").innerHTML = "";
+    openScan();
+
+  } else {
+    openManual();
+  }
 }
 
 // 🏠 Back（no reload）
@@ -220,19 +234,15 @@ async function goHome() {
   hideAll();
   document.getElementById("home").style.display = "block";
 
-  // 🔥 正确释放 scanner
-  if (scanner) {
+  if (scanner && scanning) {
     try {
-      await scanner.stop();   // ⚠️ 必须等待
+      await scanner.stop();
     } catch (e) {}
 
-    try {
-      await scanner.clear();  // ⚠️ 必须等待
-    } catch (e) {}
-
-    scanner = null;
     scanning = false;
   }
+
+  // ⚠️ 不 clear scanner（重点！）
 }
 
 // util
