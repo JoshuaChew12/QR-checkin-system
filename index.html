@@ -1,32 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://unpkg.com/html5-qrcode"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-  <style>
-    body { font-family: Arial; text-align: center; padding: 20px; }
+<style>
+body {
+  font-family: Arial;
+  text-align: center;
+  padding: 20px;
+}
 
-    button {
-      padding: 14px;
-      margin: 10px;
-      font-size: 16px;
-    }
+button {
+  padding: 16px;
+  margin: 10px;
+  font-size: 18px;
+}
 
-    input {
-      padding: 12px;
-      font-size: 16px;
-      width: 220px;
-    }
+#scanner {
+  width: 320px;
+  margin: auto;
+}
 
-    #scanner {
-      width: 320px;
-      margin: auto;
-    }
-
-    .ok { color: green; }
-    .err { color: red; }
-  </style>
+/* RESULT COLORS */
+.success { background: #d4edda; }
+.duplicate { background: #fff3cd; }
+.error { background: #f8d7da; }
+</style>
 </head>
 
 <body>
@@ -36,79 +36,155 @@
 <!-- HOME -->
 <div id="home">
   <button onclick="openScan()">📷 Scan QR</button>
-  <button onclick="openManual()">⌨️ Manual Input</button>
 </div>
 
 <!-- SCAN -->
 <div id="scanPage" style="display:none;">
   <h3>Scan QR Code</h3>
   <div id="scanner"></div>
-  <button onclick="stopScan()">Stop</button>
-  <div id="scanResult"></div>
 </div>
 
-<!-- MANUAL -->
-<div id="manualPage" style="display:none;">
-  <h3>Manual Check-in</h3>
-  <input id="idInput" placeholder="Enter ID">
+<!-- RESULT -->
+<div id="resultPage" style="display:none; padding:30px;">
+
+  <div id="resultContent"></div>
+
   <br><br>
-  <button onclick="manualCheck()">Check-in</button>
-  <div id="manualResult"></div>
+
+  <button onclick="nextScan()">Submit Another</button>
+  <button onclick="goHome()">Home</button>
+
 </div>
 
 <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGlB4nwyn2sN0aGhswul1c_Z3sWsbigBFgweNo3GnWns-8p/exec";
+const API_URL = "你的AppsScript URL";
 
 let scanner;
+let scanning = false;
 
 function openScan() {
   document.getElementById("home").style.display = "none";
   document.getElementById("scanPage").style.display = "block";
+  document.getElementById("resultPage").style.display = "none";
 
   scanner = new Html5Qrcode("scanner");
 
+  scanning = true;
+
   scanner.start(
     { facingMode: "environment" },
-    { fps: 10, qrbox: 250 },
+    { fps: 15, qrbox: 250 },
     onScanSuccess
   );
 }
 
 function onScanSuccess(text) {
+  if (!scanning) return;
+
+  scanning = false;
   scanner.stop();
+
+  showLoading();
 
   fetch(API_URL + "?action=checkin&id=" + text)
     .then(res => res.json())
-    .then(data => {
-      document.getElementById("scanResult").innerHTML =
-        data.success
-          ? "✅ " + data.name + "<br>" + data.time
-          : "❌ " + data.message;
-    });
+    .then(data => showResult(data));
 }
 
-function stopScan() {
-  if (scanner) scanner.stop();
+function showLoading() {
+  document.getElementById("scanPage").style.display = "none";
+  document.getElementById("resultPage").style.display = "block";
+
+  document.getElementById("resultContent").innerHTML =
+    "<div style='font-size:40px;'>⏳ Checking...</div>";
+}
+
+function showResult(data) {
+
+  let html = "";
+  let page = document.getElementById("resultPage");
+
+  // 🔊 sound
+  const beep = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+
+  // 📳 vibrate
+  if (navigator.vibrate) navigator.vibrate(100);
+
+  if (data.type === "success") {
+
+    page.className = "success";
+
+    html = `
+      <div style="font-size:70px; font-weight:bold; color:green;">
+        ${data.chineseName}
+      </div>
+
+      <div style="font-size:40px;">
+        ${data.englishName}
+      </div>
+
+      <br>
+
+      <div style="font-size:30px;">Checked In</div>
+
+      <div style="font-size:26px;">${data.time}</div>
+    `;
+
+    beep.play();
+
+  } else if (data.type === "duplicate") {
+
+    page.className = "duplicate";
+
+    html = `
+      <div style="font-size:50px; color:orange; font-weight:bold;">
+        Already Checked In
+      </div>
+
+      <br>
+
+      <div style="font-size:60px;">
+        ${data.chineseName}
+      </div>
+
+      <div style="font-size:40px;">
+        ${data.englishName}
+      </div>
+
+      <br>
+
+      <div style="font-size:28px;">
+        Check-in Time
+      </div>
+
+      <div style="font-size:32px;">
+        ${data.time}
+      </div>
+    `;
+
+  } else {
+
+    page.className = "error";
+
+    html = `
+      <div style="font-size:50px; color:red;">
+        ${data.message}
+      </div>
+    `;
+  }
+
+  document.getElementById("resultContent").innerHTML = html;
+}
+
+// 👉 下一位
+function nextScan() {
   location.reload();
 }
 
-function openManual() {
-  document.getElementById("home").style.display = "none";
-  document.getElementById("manualPage").style.display = "block";
-}
-
-function manualCheck() {
-  const id = document.getElementById("idInput").value;
-
-  fetch(API_URL + "?action=checkin&id=" + id)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("manualResult").innerHTML =
-        data.success
-          ? "✅ " + data.name + "<br>" + data.time
-          : "❌ " + data.message;
-    });
+// 👉 返回主页
+function goHome() {
+  location.reload();
 }
 
 </script>
