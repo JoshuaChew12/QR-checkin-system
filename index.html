@@ -5,27 +5,16 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body {
-  font-family: Arial;
-  text-align: center;
-  padding: 20px;
-}
+body { font-family: Arial; text-align: center; padding: 20px; }
 
-button {
-  padding: 16px;
-  margin: 10px;
-  font-size: 18px;
-}
+button { padding:16px; margin:10px; font-size:18px; }
+input { padding:14px; font-size:18px; width:220px; }
 
-#scanner {
-  width: 320px;
-  margin: auto;
-}
+#scanner { width:320px; margin:auto; }
 
-/* RESULT COLORS */
-.success { background: #d4edda; }
-.duplicate { background: #fff3cd; }
-.error { background: #f8d7da; }
+.success { background:#d4edda; }
+.duplicate { background:#fff3cd; }
+.error { background:#f8d7da; }
 </style>
 </head>
 
@@ -36,6 +25,7 @@ button {
 <!-- HOME -->
 <div id="home">
   <button onclick="openScan()">📷 Scan QR</button>
+  <button onclick="openManual()">⌨️ Manual Input</button>
 </div>
 
 <!-- SCAN -->
@@ -44,16 +34,20 @@ button {
   <div id="scanner"></div>
 </div>
 
+<!-- MANUAL -->
+<div id="manualPage" style="display:none;">
+  <h3>Manual Check-in</h3>
+  <input id="idInput" placeholder="Enter ID">
+  <br><br>
+  <button onclick="manualCheck()">Check-in</button>
+</div>
+
 <!-- RESULT -->
 <div id="resultPage" style="display:none; padding:30px;">
-
   <div id="resultContent"></div>
-
   <br><br>
-
   <button onclick="nextScan()">Submit Another</button>
   <button onclick="goHome()">Home</button>
-
 </div>
 
 <script>
@@ -63,13 +57,12 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGl
 let scanner;
 let scanning = false;
 
+// 📷 Scan
 function openScan() {
-  document.getElementById("home").style.display = "none";
+  hideAll();
   document.getElementById("scanPage").style.display = "block";
-  document.getElementById("resultPage").style.display = "none";
 
   scanner = new Html5Qrcode("scanner");
-
   scanning = true;
 
   scanner.start(
@@ -89,26 +82,42 @@ function onScanSuccess(text) {
 
   fetch(API_URL + "?action=checkin&id=" + text)
     .then(res => res.json())
-    .then(data => showResult(data));
+    .then(showResult);
 }
 
-function showLoading() {
-  document.getElementById("scanPage").style.display = "none";
-  document.getElementById("resultPage").style.display = "block";
+// ⌨️ Manual
+function openManual() {
+  hideAll();
+  document.getElementById("manualPage").style.display = "block";
+}
 
+function manualCheck() {
+  const id = document.getElementById("idInput").value.trim();
+
+  if (!id) return;
+
+  showLoading();
+
+  fetch(API_URL + "?action=checkin&id=" + id)
+    .then(res => res.json())
+    .then(showResult);
+}
+
+// ⏳ Loading
+function showLoading() {
+  hideAll();
+  document.getElementById("resultPage").style.display = "block";
   document.getElementById("resultContent").innerHTML =
     "<div style='font-size:40px;'>⏳ Checking...</div>";
 }
 
+// 🎯 Result UI
 function showResult(data) {
 
+  const page = document.getElementById("resultPage");
   let html = "";
-  let page = document.getElementById("resultPage");
 
-  // 🔊 sound
   const beep = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-
-  // 📳 vibrate
   if (navigator.vibrate) navigator.vibrate(100);
 
   if (data.type === "success") {
@@ -128,7 +137,9 @@ function showResult(data) {
 
       <div style="font-size:30px;">Checked In</div>
 
-      <div style="font-size:26px;">${data.time}</div>
+      <div style="font-size:26px;">
+        ${data.time}
+      </div>
     `;
 
     beep.play();
@@ -154,9 +165,7 @@ function showResult(data) {
 
       <br>
 
-      <div style="font-size:28px;">
-        Check-in Time
-      </div>
+      <div style="font-size:28px;">Check-in Time</div>
 
       <div style="font-size:32px;">
         ${data.time}
@@ -177,14 +186,20 @@ function showResult(data) {
   document.getElementById("resultContent").innerHTML = html;
 }
 
-// 👉 下一位
+// 🔁 控制
 function nextScan() {
   location.reload();
 }
 
-// 👉 返回主页
 function goHome() {
   location.reload();
+}
+
+function hideAll() {
+  document.getElementById("home").style.display = "none";
+  document.getElementById("scanPage").style.display = "none";
+  document.getElementById("manualPage").style.display = "none";
+  document.getElementById("resultPage").style.display = "none";
 }
 
 </script>
