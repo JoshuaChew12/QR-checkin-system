@@ -92,8 +92,15 @@ let currentMode = "";
 // 📷 Scan
 function openScan() {
   currentMode = "scan";
+
   hideAll();
   document.getElementById("scanPage").style.display = "block";
+
+  // 🔥 防止重复 scanner
+  if (scanner) {
+    scanner.clear().catch(()=>{});
+    scanner = null;
+  }
 
   scanner = new Html5Qrcode("scanner");
   scanning = true;
@@ -208,15 +215,24 @@ function nextAction() {
 }
 
 // 🏠 Back（no reload）
-function goHome() {
-
-  if (scanner) {
-    scanner.stop().catch(()=>{});
-    scanner.clear();
-  }
+async function goHome() {
 
   hideAll();
   document.getElementById("home").style.display = "block";
+
+  // 🔥 正确释放 scanner
+  if (scanner) {
+    try {
+      await scanner.stop();   // ⚠️ 必须等待
+    } catch (e) {}
+
+    try {
+      await scanner.clear();  // ⚠️ 必须等待
+    } catch (e) {}
+
+    scanner = null;
+    scanning = false;
+  }
 }
 
 // util
