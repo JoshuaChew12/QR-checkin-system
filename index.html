@@ -32,21 +32,34 @@ input { padding:14px; font-size:18px; width:220px; }
 <div id="scanPage" style="display:none;">
   <h3>Scan QR Code</h3>
   <div id="scanner"></div>
+
+  <br>
+
+  <button onclick="goHome()">⬅️ Back</button>
 </div>
 
 <!-- MANUAL -->
 <div id="manualPage" style="display:none;">
   <h3>Manual Check-in</h3>
+
   <input id="idInput" placeholder="Enter ID"
     onkeypress="if(event.key==='Enter') manualCheck()">
+
   <br><br>
+
   <button onclick="manualCheck()">Check-in</button>
+
+  <br>
+
+  <button onclick="goHome()">⬅️ Back</button>
 </div>
 
 <!-- RESULT -->
 <div id="resultPage" style="display:none; padding:30px;">
   <div id="resultContent"></div>
+
   <br><br>
+
   <button onclick="nextAction()">Submit Another</button>
   <button onclick="goHome()">Home</button>
 </div>
@@ -57,7 +70,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGl
 
 let scanner;
 let scanning = false;
-let currentMode = ""; // scan / manual
+let currentMode = "";
 
 // 📷 Scan
 function openScan() {
@@ -194,7 +207,7 @@ function showResult(data) {
   document.getElementById("resultContent").innerHTML = html;
 }
 
-// 🔁 Submit Another（关键逻辑）
+// 🔁 Submit Another
 function nextAction() {
   if (currentMode === "scan") {
     openScan();
@@ -203,7 +216,7 @@ function nextAction() {
   }
 }
 
-// 🏠 Home
+// 🏠 Home（统一入口）
 function goHome() {
   location.reload();
 }
