@@ -37,7 +37,8 @@ input { padding:14px; font-size:18px; width:220px; }
 <!-- MANUAL -->
 <div id="manualPage" style="display:none;">
   <h3>Manual Check-in</h3>
-  <input id="idInput" placeholder="Enter ID">
+  <input id="idInput" placeholder="Enter ID"
+    onkeypress="if(event.key==='Enter') manualCheck()">
   <br><br>
   <button onclick="manualCheck()">Check-in</button>
 </div>
@@ -46,7 +47,7 @@ input { padding:14px; font-size:18px; width:220px; }
 <div id="resultPage" style="display:none; padding:30px;">
   <div id="resultContent"></div>
   <br><br>
-  <button onclick="nextScan()">Submit Another</button>
+  <button onclick="nextAction()">Submit Another</button>
   <button onclick="goHome()">Home</button>
 </div>
 
@@ -56,9 +57,12 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGl
 
 let scanner;
 let scanning = false;
+let currentMode = ""; // scan / manual
 
 // 📷 Scan
 function openScan() {
+  currentMode = "scan";
+
   hideAll();
   document.getElementById("scanPage").style.display = "block";
 
@@ -87,13 +91,17 @@ function onScanSuccess(text) {
 
 // ⌨️ Manual
 function openManual() {
+  currentMode = "manual";
+
   hideAll();
   document.getElementById("manualPage").style.display = "block";
+
+  document.getElementById("idInput").value = "";
+  document.getElementById("idInput").focus();
 }
 
 function manualCheck() {
   const id = document.getElementById("idInput").value.trim();
-
   if (!id) return;
 
   showLoading();
@@ -111,7 +119,7 @@ function showLoading() {
     "<div style='font-size:40px;'>⏳ Checking...</div>";
 }
 
-// 🎯 Result UI
+// 🎯 Result
 function showResult(data) {
 
   const page = document.getElementById("resultPage");
@@ -186,15 +194,21 @@ function showResult(data) {
   document.getElementById("resultContent").innerHTML = html;
 }
 
-// 🔁 控制
-function nextScan() {
-  location.reload();
+// 🔁 Submit Another（关键逻辑）
+function nextAction() {
+  if (currentMode === "scan") {
+    openScan();
+  } else if (currentMode === "manual") {
+    openManual();
+  }
 }
 
+// 🏠 Home
 function goHome() {
   location.reload();
 }
 
+// 工具
 function hideAll() {
   document.getElementById("home").style.display = "none";
   document.getElementById("scanPage").style.display = "none";
