@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; }
+
+    button {
+      padding: 14px;
+      margin: 10px;
+      font-size: 16px;
+    }
+
+    input {
+      padding: 12px;
+      font-size: 16px;
+      width: 220px;
+    }
+
+    #scanner {
+      width: 320px;
+      margin: auto;
+    }
+
+    .ok { color: green; }
+    .err { color: red; }
+  </style>
+</head>
+
+<body>
+
+<h2>Check-in System</h2>
+
+<!-- HOME -->
+<div id="home">
+  <button onclick="openScan()">📷 Scan QR</button>
+  <button onclick="openManual()">⌨️ Manual Input</button>
+</div>
+
+<!-- SCAN -->
+<div id="scanPage" style="display:none;">
+  <h3>Scan QR Code</h3>
+  <div id="scanner"></div>
+  <button onclick="stopScan()">Stop</button>
+  <div id="scanResult"></div>
+</div>
+
+<!-- MANUAL -->
+<div id="manualPage" style="display:none;">
+  <h3>Manual Check-in</h3>
+  <input id="idInput" placeholder="Enter ID">
+  <br><br>
+  <button onclick="manualCheck()">Check-in</button>
+  <div id="manualResult"></div>
+</div>
+
+<script>
+
+const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGlB4nwyn2sN0aGhswul1c_Z3sWsbigBFgweNo3GnWns-8p/exec";
+
+let scanner;
+
+function openScan() {
+  document.getElementById("home").style.display = "none";
+  document.getElementById("scanPage").style.display = "block";
+
+  scanner = new Html5Qrcode("scanner");
+
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    onScanSuccess
+  );
+}
+
+function onScanSuccess(text) {
+  scanner.stop();
+
+  fetch(API_URL + "?action=checkin&id=" + text)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("scanResult").innerHTML =
+        data.success
+          ? "✅ " + data.name + "<br>" + data.time
+          : "❌ " + data.message;
+    });
+}
+
+function stopScan() {
+  if (scanner) scanner.stop();
+  location.reload();
+}
+
+function openManual() {
+  document.getElementById("home").style.display = "none";
+  document.getElementById("manualPage").style.display = "block";
+}
+
+function manualCheck() {
+  const id = document.getElementById("idInput").value;
+
+  fetch(API_URL + "?action=checkin&id=" + id)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("manualResult").innerHTML =
+        data.success
+          ? "✅ " + data.name + "<br>" + data.time
+          : "❌ " + data.message;
+    });
+}
+
+</script>
+
+</body>
+</html>
