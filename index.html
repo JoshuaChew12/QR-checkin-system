@@ -130,6 +130,19 @@ function onScanSuccess(text) {
   fetch(API_URL + "?action=checkin&id=" + text)
     .then(r => r.json())
     .then(data => handleResult(data));
+  
+        // 🔥 成功才写入 Log
+    if (data.status === "SUCCESS") {
+
+      fetch(
+        API_URL +
+        "?action=log" +
+        "&name=" + encodeURIComponent(data.name) +
+        "&id=" + encodeURIComponent(data.id)
+      );
+
+    }
+  });
 }
 
 // ⌨️ Manual
@@ -150,6 +163,20 @@ function manualCheck() {
   fetch(API_URL + "?action=checkin&id=" + id)
     .then(r => r.json())
     .then(data => handleResult(data));
+
+    
+        // 🔥 成功才写入 Log
+    if (data.status === "SUCCESS") {
+
+      fetch(
+        API_URL +
+        "?action=log" +
+        "&name=" + encodeURIComponent(data.name) +
+        "&id=" + encodeURIComponent(data.id)
+      );
+
+    }
+  });
 }
 
 // 🎯 result handler
