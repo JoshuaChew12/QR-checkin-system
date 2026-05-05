@@ -119,9 +119,40 @@ function openScan() {
   });
 }
 
+function callAPI(id) {
+
+  showLoading();
+
+  fetch(API_URL + "?action=checkin&id=" + encodeURIComponent(id))
+    .then(function(res) {
+      return res.text(); // 一律先当 text
+    })
+    .then(function(text) {
+
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        // ❗ 如果不是 JSON，直接显示原始内容
+        return handleResult({
+          type: "error",
+          message: "Invalid response: " + text.substring(0, 100)
+        });
+      }
+
+      handleResult(data);
+    })
+    .catch(function() {
+      handleResult({
+        type: "error",
+        message: "Network / Server Error"
+      });
+    });
+}
+
 // 🔥 Scan Success（已修复所有问题）
 async function onScanSuccess(text) {
-
   if (!scanning || isProcessing) return;
 
   isProcessing = true;
@@ -131,25 +162,9 @@ async function onScanSuccess(text) {
     await scanner.stop();
   } catch (e) {}
 
-  showLoading();
+  callAPI(text);
 
-  fetch(API_URL + "?action=checkin&id=" + text)
-  .then(r => r.text())
-  .then(t => {
-    try { return JSON.parse(t); }
-    catch(e) { throw new Error(t); }
-  })
-  .then(data => handleResult(data))
-  .catch(err => {
-    console.log("RAW RESPONSE ERROR:", err);
-    handleResult({
-      type: "error",
-      message: "Server Error"
-    });
-  });
-    .finally(() => {
-      isProcessing = false;
-    });
+  isProcessing = false;
 }
 
 // ⌨️ Manual
@@ -165,24 +180,9 @@ function manualCheck() {
   const id = document.getElementById("idInput").value.trim();
   if (!id) return;
 
-  showLoading();
-
-  fetch(API_URL + "?action=checkin&id=" + id)
-  .then(r => r.text())
-  .then(t => {
-    try { return JSON.parse(t); }
-    catch(e) { throw new Error(t); }
-  })
-  .then(data => handleResult(data))
-  .catch(err => {
-    console.log("RAW RESPONSE ERROR:", err);
-    handleResult({
-      type: "error",
-      message: "Server Error"
-    });
-  });
+  callAPI(id);
 }
-
+  
 // 🎯 result handler（已修复 UI 不刷新问题）
 function handleResult(data) {
 
