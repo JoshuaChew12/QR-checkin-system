@@ -88,6 +88,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGl
 let scanner = null;
 let scanning = false;
 let currentMode = "";
+let isProcessing = false;
 
 // 📷 Scan
 function openScan() {
@@ -97,8 +98,6 @@ function openScan() {
   document.getElementById("scanPage").style.display = "block";
 
   const scannerElement = document.getElementById("scanner");
-
-  // 🔥 清空 DOM（非常重要）
   scannerElement.innerHTML = "";
 
   if (!scanner) {
@@ -119,18 +118,36 @@ function openScan() {
     console.log("Camera start failed:", err);
   });
 }
-function onScanSuccess(text) {
-  if (!scanning) return;
 
+// 🔥 Scan Success（已修复所有问题）
+async function onScanSuccess(text) {
+
+  if (!scanning || isProcessing) return;
+
+  isProcessing = true;
   scanning = false;
-  scanner.stop();
+
+  try {
+    await scanner.stop();
+  } catch (e) {}
 
   showLoading();
 
   fetch(API_URL + "?action=checkin&id=" + text)
-    .then(r => r.json())
-    .then(data => handleResult(data));
-
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP");
+      return r.json();
+    })
+    .then(data => handleResult(data))
+    .catch(() => {
+      handleResult({
+        type: "error",
+        message: "Server / Network Error"
+      });
+    })
+    .finally(() => {
+      isProcessing = false;
+    });
 }
 
 // ⌨️ Manual
@@ -149,13 +166,24 @@ function manualCheck() {
   showLoading();
 
   fetch(API_URL + "?action=checkin&id=" + id)
-    .then(r => r.json())
-    .then(data => handleResult(data));
-
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP");
+      return r.json();
+    })
+    .then(data => handleResult(data))
+    .catch(() => {
+      handleResult({
+        type: "error",
+        message: "Server / Network Error"
+      });
+    });
 }
 
-// 🎯 result handler
+// 🎯 result handler（已修复 UI 不刷新问题）
 function handleResult(data) {
+
+  hideAll();
+  document.getElementById("resultPage").style.display = "block";
 
   const page = document.getElementById("resultPage");
   let html = "";
@@ -220,17 +248,14 @@ function handleResult(data) {
 // 🔁 Submit Another
 function nextAction() {
   if (currentMode === "scan") {
-
-    // 🔥 重新初始化 DOM + restart camera
     document.getElementById("scanner").innerHTML = "";
     openScan();
-
   } else {
     openManual();
   }
 }
 
-// 🏠 Back（no reload）
+// 🏠 Back
 async function goHome() {
 
   hideAll();
@@ -243,8 +268,6 @@ async function goHome() {
 
     scanning = false;
   }
-
-  // ⚠️ 不 clear scanner（重点！）
 }
 
 // util
