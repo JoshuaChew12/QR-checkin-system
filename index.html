@@ -5,10 +5,6 @@
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <style>
 body { font-family: Arial; text-align:center; padding:20px; }
 
@@ -27,8 +23,6 @@ input { padding:14px; font-size:18px; width:220px; }
 
 <h2>Check-in System</h2>
 
-<h3>Checked-in: <span id="count">0</span></h3>
-
 <!-- HOME -->
 <div id="home">
   <button onclick="openScan()">📷 Scan QR</button>
@@ -39,7 +33,6 @@ input { padding:14px; font-size:18px; width:220px; }
 <div id="scanPage" style="display:none;">
   <h3>Scan QR Code</h3>
   <div id="scanner"></div>
-
   <button onclick="goHome()">⬅️ Back</button>
 </div>
 
@@ -51,37 +44,20 @@ input { padding:14px; font-size:18px; width:220px; }
     onkeypress="if(event.key==='Enter') manualCheck()">
 
   <br><br>
-
   <button onclick="manualCheck()">Check-in</button>
-
   <br>
-
   <button onclick="goHome()">⬅️ Back</button>
 </div>
 
 <!-- RESULT -->
 <div id="resultPage" style="display:none;">
   <div id="resultContent"></div>
-
   <br><br>
-
   <button onclick="nextAction()">Submit Another</button>
   <button onclick="goHome()">Home</button>
 </div>
 
 <script>
-
-// 🔥 Firebase
-firebase.initializeApp({
-  databaseURL: "https://event-qr-check-in-system-default-rtdb.asia-southeast1.firebasedatabase.app/"
-});
-
-const db = firebase.database();
-
-// realtime counter
-db.ref("count").on("value", snap => {
-  document.getElementById("count").innerText = snap.val() || 0;
-});
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGlB4nwyn2sN0aGhswul1c_Z3sWsbigBFgweNo3GnWns-8p/exec";
 
@@ -90,6 +66,34 @@ let scanning = false;
 let currentMode = "";
 let isProcessing = false;
 
+// 🔥 JSONP 请求（核心）
+function callAPI(id) {
+
+  showLoading();
+
+  const callbackName = "cb_" + Date.now();
+
+  window[callbackName] = function(data) {
+    handleResult(data);
+    delete window[callbackName];
+  };
+
+  const script = document.createElement("script");
+
+  script.src = API_URL +
+    "?action=checkin&id=" + encodeURIComponent(id) +
+    "&callback=" + callbackName;
+
+  script.onerror = function() {
+    handleResult({
+      type: "error",
+      message: "Request Failed"
+    });
+  };
+
+  document.body.appendChild(script);
+}
+
 // 📷 Scan
 function openScan() {
   currentMode = "scan";
@@ -97,8 +101,7 @@ function openScan() {
   hideAll();
   document.getElementById("scanPage").style.display = "block";
 
-  const scannerElement = document.getElementById("scanner");
-  scannerElement.innerHTML = "";
+  document.getElementById("scanner").innerHTML = "";
 
   if (!scanner) {
     scanner = new Html5Qrcode("scanner");
@@ -108,59 +111,18 @@ function openScan() {
 
   scanner.start(
     { facingMode: "environment" },
-    {
-      fps: 15,
-      qrbox: 250,
-      aspectRatio: 1.0
-    },
+    { fps: 15, qrbox: 250 },
     onScanSuccess
-  ).catch(err => {
-    console.log("Camera start failed:", err);
-  });
+  );
 }
 
-function callAPI(id) {
-
-  showLoading();
-
-  fetch(API_URL + "?action=checkin&id=" + encodeURIComponent(id))
-    .then(function(res) {
-      return res.text();
-    })
-    .then(function(text) {
-
-      let data;
-
-      try {
-        data = JSON.parse(text);
-        handleResult(data);
-
-      } catch (e) {
-        // 🔥 直接显示后端真实返回
-        handleResult({
-          type: "error",
-          message: text.substring(0, 200)
-        });
-      }
-    })
-    .catch(function() {
-      handleResult({
-        type: "error",
-        message: "Network Failed"
-      });
-    });
-}
-
-// 🔥 Scan Success（已修复所有问题）
 async function onScanSuccess(text) {
   if (!scanning || isProcessing) return;
 
   isProcessing = true;
   scanning = false;
 
-  try {
-    await scanner.stop();
-  } catch (e) {}
+  try { await scanner.stop(); } catch(e) {}
 
   callAPI(text);
 
@@ -182,104 +144,74 @@ function manualCheck() {
 
   callAPI(id);
 }
-  
-// 🎯 result handler（已修复 UI 不刷新问题）
+
+// 🎯 Result
 function handleResult(data) {
 
   hideAll();
   document.getElementById("resultPage").style.display = "block";
 
-  const page = document.getElementById("resultPage");
   let html = "";
-
-  const beep = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-  if (navigator.vibrate) navigator.vibrate(100);
 
   if (data.type === "success") {
 
-    page.className = "success";
+    document.body.className = "success";
 
     html = `
-      <div style="font-size:70px;color:green;font-weight:bold;">
-        ${data.chineseName}
-      </div>
-      <div style="font-size:40px;">
-        ${data.englishName}
-      </div>
-      <br>
-      <div style="font-size:30px;">Checked In</div>
-      <div style="font-size:26px;">${data.time}</div>
+      <h1>${data.chineseName}</h1>
+      <h2>${data.englishName}</h2>
+      <h2>✅ Checked In</h2>
+      <p>${data.time}</p>
     `;
-
-    beep.play();
-
-    db.ref("count").transaction(v => (v || 0) + 1);
 
   } else if (data.type === "duplicate") {
 
-    page.className = "duplicate";
+    document.body.className = "duplicate";
 
     html = `
-      <div style="font-size:50px;color:orange;">
-        Already Checked In
-      </div>
-      <br>
-      <div style="font-size:60px;">
-        ${data.chineseName}
-      </div>
-      <div style="font-size:40px;">
-        ${data.englishName}
-      </div>
-      <br>
-      <div style="font-size:28px;">Check-in Time</div>
-      <div style="font-size:32px;">${data.time}</div>
+      <h2>⚠️ Already Checked In</h2>
+      <h1>${data.chineseName}</h1>
+      <p>${data.englishName}</p>
+      <p>${data.time}</p>
     `;
 
   } else {
 
-    page.className = "error";
+    document.body.className = "error";
 
-    html = `
-      <div style="font-size:50px;color:red;">
-        ${data.message}
-      </div>
-    `;
+    html = <h2>❌ ${data.message}</h2>;
   }
 
   document.getElementById("resultContent").innerHTML = html;
 }
 
-// 🔁 Submit Another
+// 🔁 Next
 function nextAction() {
   if (currentMode === "scan") {
-    document.getElementById("scanner").innerHTML = "";
     openScan();
   } else {
     openManual();
   }
 }
 
-// 🏠 Back
+// 🏠 Home
 async function goHome() {
 
   hideAll();
   document.getElementById("home").style.display = "block";
 
   if (scanner && scanning) {
-    try {
-      await scanner.stop();
-    } catch (e) {}
-
+    try { await scanner.stop(); } catch(e) {}
     scanning = false;
   }
 }
 
-// util
+// UI
 function showLoading() {
   hideAll();
   document.getElementById("resultPage").style.display = "block";
   document.getElementById("resultContent").innerHTML =
-    "<div style='font-size:40px;'>⏳ Checking...</div>";
+    "<h2>⏳ Checking...</h2>";
 }
 
 function hideAll() {
