@@ -85,6 +85,20 @@ db.ref("count").on("value", snap => {
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzmvjnDc8Rqek-d-aN0XeGlB4nwyn2sN0aGhswul1c_Z3sWsbigBFgweNo3GnWns-8p/exec";
 
+function callAPI(id) {
+
+  showLoading();
+
+  fetch(API_URL + "?action=checkin&id=" + encodeURIComponent(id))
+    .then(r => r.json())
+    .then(data => handleResult(data))
+    .catch(() => {
+      handleResult({
+        type: "error",
+        message: "Network error"
+      });
+    });
+}
 let scanner = null;
 let scanning = false;
 let currentMode = "";
@@ -125,11 +139,7 @@ function onScanSuccess(text) {
   scanning = false;
   scanner.stop();
 
-  showLoading();
-
-  fetch(API_URL + "?action=checkin&id=" + text)
-    .then(r => r.json())
-    .then(data => handleResult(data));
+  callAPI(text);
 }
 
 // ⌨️ Manual
@@ -145,11 +155,7 @@ function manualCheck() {
   const id = document.getElementById("idInput").value.trim();
   if (!id) return;
 
-  showLoading();
-
-  fetch(API_URL + "?action=checkin&id=" + id)
-    .then(r => r.json())
-    .then(data => handleResult(data));
+  callAPI(id);
 }
 
 // 🎯 result handler
