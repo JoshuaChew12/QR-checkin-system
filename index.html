@@ -89,50 +89,25 @@ function callAPI(id) {
 
   showLoading();
 
-  const url = API_URL + "?action=checkin&id=" + encodeURIComponent(id);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000); // 5秒保护
 
-  // 🔥 用 iframe 直接请求
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.src = url;
-
-  document.body.appendChild(iframe);
-
-  // 🔥 轮询 iframe 返回内容
-  const start = Date.now();
-
-  const timer = setInterval(() => {
-
-    try {
-
-      const text = iframe.contentDocument.body.innerText;
-
-      if (text) {
-
-        clearInterval(timer);
-        iframe.remove();
-
-        const data = JSON.parse(text);
-        handleResult(data);
-
-      }
-
-    } catch (e) {
-      // ignore cross-domain until ready
-    }
-
-    // 超时保护（3秒）
-    if (Date.now() - start > 3000) {
-      clearInterval(timer);
-      iframe.remove();
+  fetch(API_URL + "?id=" + encodeURIComponent(id), {
+    signal: controller.signal
+  })
+    .then(r => r.json())
+    .then(data => handleResult(data))
+    .catch(err => {
 
       handleResult({
         type: "error",
-        message: "Timeout"
+        message: "Network error / timeout"
       });
-    }
 
-  }, 50);
+    })
+    .finally(() => {
+      clearTimeout(timeout);
+    });
 }
 let scanner = null;
 let scanning = false;
