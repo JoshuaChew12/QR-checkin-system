@@ -91,29 +91,48 @@ function callAPI(id) {
 
   const url = API_URL + "?action=checkin&id=" + encodeURIComponent(id);
 
-  // 🔥 用 iframe / script fallback（绕过 CORS）
-  const script = document.createElement("script");
+  // 🔥 用 iframe 直接请求
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.src = url;
 
-  const callbackName = "cb_" + Date.now();
+  document.body.appendChild(iframe);
 
-  window[callbackName] = function (data) {
-    handleResult(data);
+  // 🔥 轮询 iframe 返回内容
+  const start = Date.now();
 
-    // cleanup
-    delete window[callbackName];
-    script.remove();
-  };
+  const timer = setInterval(() => {
 
-  script.src = url + "&callback=" + callbackName;
+    try {
 
-  script.onerror = function () {
-    handleResult({
-      type: "error",
-      message: "Network error"
-    });
-  };
+      const text = iframe.contentDocument.body.innerText;
 
-  document.body.appendChild(script);
+      if (text) {
+
+        clearInterval(timer);
+        iframe.remove();
+
+        const data = JSON.parse(text);
+        handleResult(data);
+
+      }
+
+    } catch (e) {
+      // ignore cross-domain until ready
+    }
+
+    // 超时保护（3秒）
+    if (Date.now() - start > 3000) {
+      clearInterval(timer);
+      iframe.remove();
+
+      handleResult({
+        type: "error",
+        message: "Timeout"
+      });
+    }
+
+  }, 50);
 }
 let scanner = null;
 let scanning = false;
