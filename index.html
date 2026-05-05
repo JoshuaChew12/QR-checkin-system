@@ -89,15 +89,38 @@ function callAPI(id) {
 
   showLoading();
 
-  fetch(API_URL + "?action=checkin&id=" + encodeURIComponent(id))
-    .then(r => r.json())
-    .then(data => handleResult(data))
-    .catch(() => {
+  fetch(API_URL + "?action=checkin&id=" + encodeURIComponent(id), {
+    method: "GET",
+    redirect: "follow",
+    cache: "no-cache"
+  })
+  .then(async (res) => {
+
+    const text = await res.text();
+
+    // 🔥 如果不是 JSON，直接报错原因
+    try {
+      const data = JSON.parse(text);
+      handleResult(data);
+    } catch (e) {
+      console.log("RAW RESPONSE:", text);
       handleResult({
         type: "error",
-        message: "Network error"
+        message: "Server not JSON response"
       });
+    }
+
+  })
+  .catch((err) => {
+
+    console.log("FETCH ERROR:", err);
+
+    handleResult({
+      type: "error",
+      message: "Network/CORS/Script blocked"
     });
+
+  });
 }
 let scanner = null;
 let scanning = false;
