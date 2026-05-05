@@ -125,7 +125,7 @@ function callAPI(id) {
 
   fetch(API_URL + "?action=checkin&id=" + encodeURIComponent(id))
     .then(function(res) {
-      return res.text(); // 一律先当 text
+      return res.text();
     })
     .then(function(text) {
 
@@ -133,20 +133,20 @@ function callAPI(id) {
 
       try {
         data = JSON.parse(text);
+        handleResult(data);
+
       } catch (e) {
-        // ❗ 如果不是 JSON，直接显示原始内容
-        return handleResult({
+        // 🔥 直接显示后端真实返回
+        handleResult({
           type: "error",
-          message: "Invalid response: " + text.substring(0, 100)
+          message: text.substring(0, 200)
         });
       }
-
-      handleResult(data);
     })
     .catch(function() {
       handleResult({
         type: "error",
-        message: "Network / Server Error"
+        message: "Network Failed"
       });
     });
 }
